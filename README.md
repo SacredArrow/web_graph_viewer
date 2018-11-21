@@ -2,7 +2,7 @@
 ## Overview
 This client-server application allows you to build and watch graphs from data presented in format "x_coord y_coord"
 ## Installation
-#### Server:
+#### Server
 Simply run 
 ```
 java -jar server.jar
