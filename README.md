@@ -1,6 +1,6 @@
 # web_graph_viewer
 ## Overview
-This client-server application allows you to build and watch graphs from data presented in format <x coord> <y coord>
+This client-server application allows you to build and watch graphs from data presented in format "x_coord y_coord"
 ## Installation
 #### Server:
 Simply run 
