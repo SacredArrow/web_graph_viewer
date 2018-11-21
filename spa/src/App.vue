@@ -28,6 +28,15 @@ a {
     color: #42b983;
 }
 
+.panel-block {
+    justify-content: normal !important;
+    display: block;
+}
+
+.level-right {
+    justify-content: flex-end !important;
+}
+
 
 /*canvas{
 
@@ -49,14 +58,39 @@ a {
                     Files
                 </p>
                 <a class="panel-block is-active" v-for="file in files" v-on:click="process(file)">
-                    <span class="panel-icon">
-      <i class="fas fa-file-alt" aria-hidden="true"></i>
-    </span> {{file}}
+
+                    <nav class="level">
+                        <!-- Left side -->
+                        <div class="level-left">
+                            <span class="panel-icon">
+<i class="fas fa-file-alt" aria-hidden="true"></i>
+</span> {{file}}
+                        </div>
+
+                        <!-- Right side -->
+                        <div class="level-right">
+                            <a class="button is-danger" v-on:click.stop="deleteFile(file)">
+                                <span class="icon is-small">
+      <i class="fas fa-trash-alt"></i>
+    </span>
+                            </a>
+                        </div>
+                    </nav>
                 </a>
                 <div class="panel-block">
-                    <button class="button is-link is-outlined is-fullwidth" v-on:click="process()">
-                        reset all filters
-                    </button>
+                    <div class="file">
+                        <label class="file-label">
+                            <input class="file-input" type="file" id="file" ref="file">
+                            <span class="file-cta">
+    <span class="file-icon">
+      <i class="fas fa-upload"></i>
+    </span>
+                            <span class="file-label">
+      Upload file
+    </span>
+                            </span>
+                        </label>
+                    </div>
                 </div>
             </nav>
         </div>
@@ -78,11 +112,15 @@ export default {
     data() {
         return {
             files: [],
+            file: '',
+            file2: '',
             status: 0,
             socket: {},
             chart: {},
+            current_file: '',
             data: {
                 datasets: [{
+                  label: '',
                     data: [],
                     backgroundColor: [
                         'rgba(255, 99, 132, 0.2)',
@@ -103,10 +141,27 @@ export default {
 
     methods: {
         process(name) {
-            this.socket.send(name);
-            this.data.datasets[0].data = [];
+          this.data.datasets[0].label=name;
+                this.socket.status = 1;
+                this.socket.send("Data");
+                this.socket.send(name);
+                this.data.datasets[0].data = [];
+            },
+            deleteFile(file) {
+                this.files = [];
+                this.status = 0;
+                this.socket.send("Delete");
+                this.socket.send(file);
+            },
+            handleFileUpload() {
+                this.files = [];
+                this.status = 0;
+                this.file = this.$refs.file.files[0];
+                this.socket.send("Add");
+                this.socket.send(this.file.name);
+                this.socket.send(this.file2);
 
-        }
+            }
 
 
     },
@@ -118,50 +173,85 @@ export default {
                 data: this.data,
                 options: {
                     responsive: true,
-                    // maintainAspectRatio: false,
+                    // legend: {
+                    //     display: false
+                    // },
                     scales: {
                         yAxes: [{
-                            ticks: {
-                            }
+                            ticks: {}
                         }],
                         xAxes: [{
                             type: 'linear',
-                            ticks: {
-                            }
+                            ticks: {}
                         }]
                     }
                 }
             });
             this.chart = myChart;
 
+            document.getElementById('file')
+                .addEventListener('change', getFile)
+            var that = this;
+
+            function getFile(event) {
+                const input = event.target
+                if ('files' in input && input.files.length > 0) {
+                    placeFileContent(
+                        document.getElementById('content-target'),
+                        input.files[0])
+                }
+            }
+
+            function placeFileContent(target, file) {
+                readFileContent(file).then(content => {
+                    that.file2 = content;
+                    that.handleFileUpload();
+                }).catch(error => console.log(error))
+            }
+
+            function readFileContent(file) {
+                const reader = new FileReader()
+                return new Promise((resolve, reject) => {
+                    reader.onload = event => resolve(event.target.result)
+                    reader.onerror = error => reject(error)
+                    reader.readAsText(file)
+                })
+            }
+
             var ws = new WebSocket('ws://localhost:8000/socket');
             var that = this;
             ws.onopen = function() {
-                // Web Socket is connected, send data using send()
-                // ws.send('Message to send');
-                // alert("Message is sent...");
                 console.log("connection opened");
                 that.socket = ws;
             };
-            ws.onmessage = function(evt) {
-                if (that.status == 0) {
-                    if (evt.data == "All files sent") {
-                        console.log("files loaded");
-                        that.status = 1;
-                    } else {
-                        that.files.push(evt.data)
-                    }
-                } else if (that.status == 1) {
-                    if (evt.data == "All data sent") {
-                        that.chart.update();
+            // Status:
+            // 0 - Transfer list of files
+            // 1 - Transfer data of chart
 
-                    } else {
-                        var split = evt.data.split(" ");
-                        that.data.datasets[0].data.push({
-                            x: split[0],
-                            y: split[1]
-                        });
-                    }
+
+            ws.onmessage = function(evt) {
+                switch (that.status) {
+                    case 0:
+                        if (evt.data == "All files sent") {
+                            console.log("files loaded");
+                            that.status = 1;
+                        } else {
+                            that.files.push(evt.data)
+                        }
+                        break;
+                    case 1:
+                        if (evt.data == "All data sent") {
+                            that.chart.update();
+
+                        } else {
+                            var split = evt.data.split(/\s{1,}/);
+                            // console.log(split[0], split[1]);
+                            that.data.datasets[0].data.push({
+                                x: split[0],
+                                y: split[1]
+                            });
+                        }
+                        break;
                 }
             };
             ws.onclose = function() {
