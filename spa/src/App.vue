@@ -78,19 +78,32 @@ a {
                     </nav>
                 </a>
                 <div class="panel-block">
-                    <div class="file">
-                        <label class="file-label">
-                            <input class="file-input" type="file" id="file" ref="file">
-                            <span class="file-cta">
-    <span class="file-icon">
-      <i class="fas fa-upload"></i>
-    </span>
-                            <span class="file-label">
-      Upload file
-    </span>
-                            </span>
-                        </label>
-                    </div>
+                  <nav class="level">
+                      <!-- Left side -->
+                      <div class="file">
+                          <label class="file-label">
+                              <input class="file-input" type="file" id="file" ref="file">
+                              <span class="file-cta">
+      <span class="file-icon">
+        <i class="fas fa-upload"></i>
+      </span>
+                              <span class="file-label">
+        Upload file
+      </span>
+                              </span>
+                          </label>
+                      </div>
+
+                      <!-- Right side -->
+                      <div class="level-right">
+                        <a class="button is-primary" v-on:click="refresh()">
+  <span class="icon">
+    <i class="fas fa-sync-alt"></i>
+  </span>
+  <span>Refresh</span>
+</a>
+                      </div>
+                  </nav>
                 </div>
             </nav>
         </div>
@@ -120,7 +133,7 @@ export default {
             current_file: '',
             data: {
                 datasets: [{
-                  label: '',
+                    label: '',
                     data: [],
                     backgroundColor: [
                         'rgba(255, 99, 132, 0.2)',
@@ -140,8 +153,13 @@ export default {
     },
 
     methods: {
+      refresh() {
+        this.files = [];
+        this.status = 0;
+        this.socket.send("Files");
+      },
         process(name) {
-          this.data.datasets[0].label=name;
+                this.data.datasets[0].label = name;
                 this.socket.status = 1;
                 this.socket.send("Data");
                 this.socket.send(name);
